@@ -292,7 +292,7 @@ function WalletScreen({
         <PwaNotice blocked={!!form || !!reverse || dirty || externalBusy} />
       </div>
       <div hidden={child || page !== "home"}>{syncStatus}</div>
-      <main>
+      <main inert={externalBusy}>
         {(page === "home" || child) && (
           <>
             <div className="intro">

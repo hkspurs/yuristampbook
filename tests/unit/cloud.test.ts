@@ -163,3 +163,30 @@ it("import preview refuses a family with existing reasons before confirmation", 
     "已有原因",
   );
 });
+
+it("deletion lock blocks new offline awards across instances and survives refresh", async () => {
+  await client.beginDeletion();
+  await client.beginDeletion();
+  await client.cancelDeletion();
+  await client.refresh();
+  online = false;
+  const second = new CloudWallet(
+    {
+      userId: "dad",
+      current: async () => snapshot,
+      apply: async () => snapshot,
+    },
+    "test",
+    snapshot,
+    () => false,
+  );
+  await second.initialize();
+  await expect(second.submit(earn())).rejects.toThrow("刪除");
+  second.db.close();
+  await expect(client.submit(earn())).rejects.toThrow("刪除");
+  expect(await client.db.outbox.count()).toBe(0);
+  await client.cancelDeletion();
+  await client.submit(earn());
+  expect(await client.db.outbox.count()).toBe(1);
+  await expect(client.beginDeletion()).rejects.toThrow();
+});

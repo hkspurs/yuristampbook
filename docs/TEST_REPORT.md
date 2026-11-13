@@ -111,3 +111,9 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 ### iPhone 意外放大 — 2026-11-13
 
 依使用者要求加入 viewport maximum-scale/user-scalable 限制及 `touch-action: pan-x pan-y`，保留捲動；輸入欄原本繼承標籤 14px，改為明確 16px，避免 iPhone 聚焦小字輸入欄時自動放大。typecheck、lint、build、31/31 production E2E 通過。未實測 iPhone 真機雙指、雙擊及鍵盤聚焦縮放；Safari 可依自身政策忽略 viewport 限制，系統輔助使用縮放不能由網頁停用。參考 https://webkit.org/blog/7367/new-interaction-behaviors-in-ios-10/ 。
+
+### 刪除家庭 — 2026-11-13
+
+新增第二份 migration；正式 Supabase 尚未套用，未刪除使用者家庭。真 PostgreSQL 14/14 通過，新增 owner/其他家長/陌生人授權、確認文字、stale revision、原子失敗保留、重試、刪後重新加入。統一 join/delete 的 family→invite 鎖順序。獨立 reviewer 指出的刪除期間仍可加印問題，已加入 App 操作鎖及跨分頁 IndexedDB outbox 鎖；成功刪除保留本機阻擋標記。
+
+typecheck、lint、44 項單元、build 通過；全套 production E2E 32/32 通過，最後本機刪除鎖修改後再跑 cloud-ui 3/3。新增 UI 測試涵蓋確認前不可刪、版本衝突保留畫面、重新確認後回到加入家庭。雲端 UI 為 API 模擬，SQL 為真 PostgreSQL＋Auth shim；未測真 Supabase 刪除、兩部 iPhone 同時操作，沒有把模擬測試當正式驗收。

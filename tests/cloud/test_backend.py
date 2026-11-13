@@ -38,6 +38,34 @@ class FamilyTests(unittest.TestCase):
     def operation(self,kind='EARN',**kwargs):
         return dict(dict(type=kind,operationId=str(uuid.uuid4()),generation=self.generation,amount='1',reason='自己收拾',note='',occurredAt='2026-11-13T01:00:00.000Z'),**kwargs)
     def apply(self,operation,user=None):return rpc('family_apply',user or self.dad,operation)
+    def delete_args(self):
+        state=self.current();meta=state['backup']['meta']
+        return [state['familyId'],meta['datasetGeneration'],str(meta['revision']),'刪除家庭']
+    def test_delete_owner_revision_and_rejoin(self):
+        self.apply(self.operation());args=self.delete_args()
+        with self.assertRaises(RuntimeError):rpc('family_delete',self.mom,*args)
+        with self.assertRaises(RuntimeError):rpc('family_delete',self.stranger,*args)
+        with self.assertRaises(RuntimeError):rpc('family_delete',self.dad,*args[:-1],'錯誤確認')
+        self.apply(self.operation())
+        with self.assertRaises(RuntimeError):rpc('family_delete',self.dad,*args)
+        self.assertEqual(self.current()['backup']['wallet']['balance'],2)
+        args=self.delete_args();rpc('family_delete',self.dad,*args)
+        self.assertIsNone(self.current());self.assertIsNone(self.current(self.mom))
+        rpc('family_delete',self.dad,*args) # safe retry after lost response
+        with self.assertRaises(RuntimeError):self.apply(self.operation())
+        rpc('family_create',self.stranger,'另一家庭');token=rpc('family_invite',self.stranger)
+        joined=rpc('family_join',self.mom,token,'媽媽');self.assertEqual(joined['role'],'parent')
+        for table in ['families','members','operations','invites']:
+            field='id' if table=='families' else 'family_id'
+            self.assertEqual(sql(f"SELECT count(*) FROM stamp_private.{table} WHERE {field}='{args[0]}';"),'0')
+    def test_delete_atomic_failure_preserves_everything(self):
+        self.apply(self.operation());args=self.delete_args()
+        sql("CREATE FUNCTION stamp_private.fail_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'simulated failure'; END $$; CREATE TRIGGER fail_delete BEFORE DELETE ON stamp_private.families FOR EACH ROW EXECUTE FUNCTION stamp_private.fail_delete();")
+        try:
+            with self.assertRaises(RuntimeError):rpc('family_delete',self.dad,*args)
+            self.assertEqual(self.current()['backup']['wallet']['balance'],1)
+            self.assertEqual(len(self.current()['members']),2)
+        finally:sql('DROP TRIGGER fail_delete ON stamp_private.families; DROP FUNCTION stamp_private.fail_delete();')
     def test_unicode_and_javascript_fingerprint(self):
         result=self.apply(self.operation(reason='İ ΟΣ <script> " \\ 星星'))['backup']
         reason=result['reasons'][0]

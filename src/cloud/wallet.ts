@@ -20,6 +20,9 @@ export interface QueuedAward {
   queuedAt: string;
 }
 interface CachedInfo {
+  deleting?: boolean;
+  deletionRequests?: number;
+  deleted?: boolean;
   id: string;
   snapshot: FamilySnapshot;
   lastSynced: string;
@@ -130,6 +133,9 @@ export class CloudWallet implements WalletPort {
         await this.db.meta.add(backup.meta);
         await this.db.cloudInfo.put({
           id: "main",
+          deleting: (await this.db.cloudInfo.get("main"))?.deleting,
+          deletionRequests: (await this.db.cloudInfo.get("main"))?.deletionRequests,
+          deleted: (await this.db.cloudInfo.get("main"))?.deleted,
           snapshot: { ...snapshot, backup },
           lastSynced: new Date().toISOString(),
         });
@@ -204,7 +210,12 @@ export class CloudWallet implements WalletPort {
       "rw",
       this.db.outbox,
       this.db.entries,
+      this.db.cloudInfo,
       async () => {
+        check(
+          !(await this.db.cloudInfo.get("main"))?.deleting,
+          "此家庭正在刪除，請先完成刪除或重新登入",
+        );
         const prior = await this.db.outbox.get(fixed.operationId);
         if (prior) {
           check(
@@ -287,6 +298,27 @@ export class CloudWallet implements WalletPort {
     });
     return this.flushing;
   }
+  async beginDeletion() {
+    this.connected();
+    await this.db.transaction(
+      "rw",
+      this.db.cloudInfo,
+      this.db.outbox,
+      async () => {
+        check((await this.db.outbox.count()) === 0, "請先處理待同步加印");
+        const info=await this.db.cloudInfo.get("main");
+        await this.db.cloudInfo.update("main", { deleting: true, deletionRequests:(info?.deletionRequests||0)+1 });
+      },
+    );
+  }
+  async cancelDeletion() {
+    await this.db.transaction('rw',this.db.cloudInfo,async()=>{
+      const info=await this.db.cloudInfo.get('main');
+      const count=Math.max(0,(info?.deletionRequests||0)-1);
+      await this.db.cloudInfo.update('main',{deletionRequests:count,deleting:!!info?.deleted||count>0});
+    });
+  }
+  async completeDeletion() {await this.db.cloudInfo.update('main',{deleted:true,deleting:true});}
   async retryBlocked(operationId: string) {
     this.connected();
     await this.db.outbox.update(operationId, { status: "pending", error: "" });

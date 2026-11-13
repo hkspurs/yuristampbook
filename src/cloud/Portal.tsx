@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { App } from "../app/App";
+import type { Backup } from "../domain/model";
 import { CloudDB, CloudWallet, type QueuedAward } from "./wallet";
 import { projectUrl, rpc, snapshot, supabase, transport } from "./client";
 const registry = `stamp-wallet-family:${projectUrl}`;
@@ -214,6 +215,26 @@ export function Portal() {
         controls={
           <>
             <CloudControls wallet={wallet} busy={busy || working} />
+            {wallet.family.role === "owner" && (
+              <DeleteFamily
+                wallet={wallet}
+                busy={busy || working}
+                onWorking={setWorking}
+                onDeleted={() => {
+                  if (
+                    identityRef.current !== wallet.userId ||
+                    walletRef.current !== wallet
+                  )
+                    return;
+                  wallet.stop();
+                  walletRef.current = null;
+                  setWallet(null);
+                  localStorage.removeItem(registry);
+                  setReady(true);
+                  setError("");
+                }}
+              />
+            )}
             <aside className="panel">
               <p>{session?.user.email || "離線家庭快取"}</p>
               <button
@@ -531,4 +552,141 @@ function CloudSummary({ wallet }: { wallet: CloudWallet }) {
     };
   }, [wallet]);
   return <p role="status">{text}</p>;
+}
+
+function DeleteFamily({
+  wallet,
+  busy,
+  onDeleted,
+  onWorking,
+}: {
+  wallet: CloudWallet;
+  busy: boolean;
+  onDeleted: () => void;
+  onWorking: (value: boolean) => void;
+}) {
+  const [preview, setPreview] = useState<Backup | null>(null);
+  const [members, setMembers] = useState(0);
+  const [confirmation, setConfirmation] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [working, setLocalWorking] = useState(false);
+  const setWorking = (value: boolean) => {
+    setLocalWorking(value);
+    onWorking(value);
+  };
+  const [error, setError] = useState("");
+  const prepare = async () => {
+    if (working || busy) return;
+    setWorking(true);
+    setError("");
+    try {
+      await wallet.refresh();
+      if (await wallet.db.outbox.count())
+        throw new Error("請先完成或處理待同步加印，才可刪除家庭");
+      if (wallet.family.role !== "owner")
+        throw new Error("只有建立家庭的家長可以刪除");
+      setPreview(await wallet.exportBackup());
+      setMembers(wallet.family.members.length);
+      setConfirmation("");
+      setSaved(false);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setWorking(false);
+    }
+  };
+  const remove = async () => {
+    if (!preview || working || busy || !saved || confirmation !== "刪除家庭")
+      return;
+    setWorking(true);
+    setError("");
+    let locked=false;
+    try {
+      if (!navigator.onLine) throw new Error("請連線後再刪除家庭");
+      if (await wallet.db.outbox.count())
+        throw new Error("出現待同步加印，請先處理並重新預覽");
+      await wallet.beginDeletion();
+      locked=true;
+      await rpc(wallet.userId, "family_delete", {
+        p_family_id: wallet.family.familyId,
+        p_generation: preview.meta.datasetGeneration,
+        p_revision: preview.meta.revision,
+        p_confirmation: confirmation,
+      });
+      await wallet.completeDeletion();
+      onDeleted();
+    } catch (e) {
+      if(locked)await wallet.cancelDeletion();
+      setError(message(e));
+    } finally {
+      setWorking(false);
+    }
+  };
+  return (
+    <aside className="panel">
+      <h2>刪除家庭</h2>
+      <p>只刪除此雲端家庭，保留家長登入帳戶。刪除後可加入另一個家庭。</p>
+      {!preview ? (
+        <button disabled={busy || working} onClick={() => void prepare()}>
+          預覽刪除家庭
+        </button>
+      ) : (
+        <>
+          <p>
+            即將刪除「{preview.wallet.nickname}」的家庭：{members} 位家長、
+            {preview.entries.length} 筆紀錄、餘額 {preview.wallet.balance}{" "}
+            個印仔。
+          </p>
+          <p>
+            所有家庭成員會被解除綁定，雲端交易、原因、設定及邀請碼將永久刪除，不會合併到其他家庭。請先通知其他家長停止操作，並處理各電話的待同步加印。其他裝置可能仍留有舊快取，請登出後重新登入。
+          </p>
+          <button
+            disabled={working}
+            onClick={() =>
+              download(preview, `stamp-wallet-before-delete-${Date.now()}.json`)
+            }
+          >
+            匯出刪除前備份
+          </button>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={saved}
+              disabled={working}
+              onChange={(e) => setSaved(e.target.checked)}
+            />
+            我已保留所需備份，確認刪除此家庭及解除所有家長綁定
+          </label>
+          <label>
+            輸入「刪除家庭」確認
+            <input
+              value={confirmation}
+              disabled={working}
+              onChange={(e) => setConfirmation(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <button
+            disabled={busy || working || !saved || confirmation !== "刪除家庭"}
+            onClick={() => void remove()}
+          >
+            {working ? "處理中…" : "永久刪除此家庭"}
+          </button>
+          <button
+            disabled={working}
+            onClick={() => {
+              setPreview(null);
+              setError("");
+            }}
+          >
+            取消
+          </button>
+          <button disabled={working || busy} onClick={() => void prepare()}>
+            重新預覽
+          </button>
+        </>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </aside>
+  );
 }

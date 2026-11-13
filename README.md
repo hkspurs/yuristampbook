@@ -124,3 +124,11 @@ GitHub Pages workflow 使用 repository **Variables** `SUPABASE_URL` 及 `SUPABA
 後端測試：`bash tests/cloud/run.sh`（Docker、Python 3；只建立並清理獨立測試容器）。它驗證真 PostgreSQL 權限及交易，Auth 為測試替身，不等於真 Supabase Auth/PostgREST 驗收。
 
 官方參考：[密碼登入](https://supabase.com/docs/guides/auth/passwords)、[管理端建立已確認帳戶](https://supabase.com/docs/reference/javascript/auth-admin-createuser)。目前 V2 狀態及尚未驗收項目以 [TEST_REPORT](docs/TEST_REPORT.md) 為準，連線成功不代表家庭同步已啟用。
+
+### 刪除誤建家庭，再加入另一家庭
+
+已安裝第一份 SQL 的專案，請在 Supabase SQL Editor **只執行新增的** [`202611130002_delete_family.sql`](supabase/migrations/202611130002_delete_family.sql)，毋須重跑第一份。全新專案按檔名順序執行 `supabase/migrations/` 的所有 SQL。此升級只新增功能及調整鎖定順序，不會刪除現有家庭。
+
+部署最新版後，誤建家庭的建立者登入 → 設定 → 刪除家庭 → 預覽。先處理所有電話的待同步加印、停止其他家長操作，匯出所需備份，勾選確認並輸入「刪除家庭」，再按永久刪除。雲端家庭的全部交易、原因、設定、邀請及所有成員綁定將刪除；Supabase Auth 登入帳戶保留。完成後同一帳戶可直接輸入另一家庭邀請碼加入，不會合併舊帳目。
+
+只限 owner、必須連線，伺服器會核對家庭 ID、資料世代及預覽版本；有人在預覽後修改資料即拒絕並要求重新預覽。若回應遺失可重試原家庭刪除，不會刪除之後加入的新家庭。其他裝置可能保留離線快取，請登出再登入；此功能不遠端擦除其他電話儲存。若刪除中關閉頁面，請重新登入並完成原家庭的刪除流程，舊快取可能仍鎖定加印以防資料遺失。
