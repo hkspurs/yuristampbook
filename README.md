@@ -1,4 +1,4 @@
-# 印仔小星球 / Stamp Wallet
+# yuristampbook — 印仔小星球 / Stamp Wallet
 
 給家長與小朋友的單機印仔戶口。可加印、扣印、消費及全額撤銷；餘額永不小於 0，達標不會歸零。所有正式紀錄存在目前瀏覽器的 IndexedDB，沒有登入、雲端同步、GitHub API、追蹤或付款。
 
@@ -86,7 +86,7 @@ Linux 若缺系統瀏覽器依賴，按 Playwright 官方安裝說明處理；�
 
 ## GitHub Pages：日後手動發布
 
-本輪沒有 remote、push 或公開部署。`.github/workflows/pages.yml` **只**接受 `workflow_dispatch`，不在 push／PR 自動部署。
+初次本機交收沒有 remote、push 或公開部署。2026-11-13 使用者另行授權發布至 `hkspurs/yuristampbook`；實際發布狀態見 `docs/TEST_REPORT.md`。`.github/workflows/pages.yml` **只**接受 `workflow_dispatch`，不在 push／PR 自動部署。
 
 日後由你建立 GitHub repository，確認要公開的原始碼後：
 
