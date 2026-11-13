@@ -20,3 +20,12 @@ sequence 唯一、不可變，歷史作依據，balance 為同步快取。EARN/D
 
 ## 環境紀錄
 初始目錄沒有專案檔，.git 為空的唯讀保護目錄；不覆蓋。Node 26.13.0 / npm 11.20.0。Git identity 已有設定。只本機，不建立 remote、不 push、不部署。
+
+## 執行紀錄
+- 資料層、輸入、備份及還原測試先建立；首輪缺少服務，實作後 28 項通過。
+- 瀏覽器揭示 liveQuery 不允許寫交易；加入會失敗的重現測試，再把初始化移到訂閱前，29 項通過。
+- 獨立 reviewer 檢查後修正：開啟撤銷時固定 generation；展示模式保留設定元件；分區 dirty 聚合及寫入鎖；原因草稿存在時禁用其他編輯；PWA onNeedReload 不自動重新載入。以瀏覽器回歸驗證。
+- 使用者追加相對路徑要求：Vite 預設 base `./`，Manifest start_url/scope `./`，圖片與 HTML 資源相對引用；同一 build 在根及子目錄測試。
+- npm audit 的非破壞性修正沒有可用變更；production dependencies 無警告，開發工具仍有 15 項 low/moderate 間接依賴警告。沒有使用 force 降版。
+- 交收驗證：33 項單元／資料測試、root 29 項及 `/stamp-wallet/` 29 項 production E2E 通過；typecheck、lint、build 通過。真機項目見 TEST_REPORT。
+- 本機 main：`2cf385e` 資料層與備份；`c1c53a3` 介面、PWA、相對資源、瀏覽器回歸與手動 Pages workflow。交收文件另行提交；無 remote、push 或部署。
