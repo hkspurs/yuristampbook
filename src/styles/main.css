@@ -15,6 +15,10 @@
 * {
   box-sizing: border-box;
 }
+html {
+  /* Keep touch scrolling, but avoid accidental double-tap and pinch zoom. */
+  touch-action: pan-x pan-y;
+}
 body {
   margin: 0;
 }
@@ -517,6 +521,7 @@ textarea {
   display: block;
   width: 100%;
   min-height: 46px;
+  font-size: 16px;
   border: 1px solid #aab8bd;
   border-radius: 9px;
   padding: 10px 12px;
@@ -581,7 +586,7 @@ fieldset {
   margin-top: 22px;
 }
 input[type="file"] {
-  font-size: 13px;
+  font-size: 16px;
   padding: 10px 6px;
 }
 .checkbox {

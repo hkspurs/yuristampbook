@@ -107,3 +107,7 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 ### 同步控制移到設定 — 2026-11-13
 
 家庭同步入口、成員、邀請碼、立即同步、待同步項目及登出集中於設定頁；首頁只顯示同步摘要。設定區維持掛載，切頁不停止 15 秒同步 timer。typecheck、lint、43/43 unit、build、31/31 production E2E 通過，cloud-ui 驗證首頁不顯示同步入口、設定頁可進入登入。未重做真實雙電話驗收。
+
+### iPhone 意外放大 — 2026-11-13
+
+依使用者要求加入 viewport maximum-scale/user-scalable 限制及 `touch-action: pan-x pan-y`，保留捲動；輸入欄原本繼承標籤 14px，改為明確 16px，避免 iPhone 聚焦小字輸入欄時自動放大。typecheck、lint、build、31/31 production E2E 通過。未實測 iPhone 真機雙指、雙擊及鍵盤聚焦縮放；Safari 可依自身政策忽略 viewport 限制，系統輔助使用縮放不能由網頁停用。參考 https://webkit.org/blog/7367/new-interaction-behaviors-in-ios-10/ 。
