@@ -111,10 +111,10 @@ git push -u origin main
 本機模式仍保留原 IndexedDB，沒有自動搬移或刪除。爸爸媽媽用不同電郵登入同一家庭；離線只可暫存加印，待伺服器確認才加入可用餘額。扣印、消費、更正、原因及設定修改需要連線。每 15 秒、返回 App 或恢復連線時刷新，不宣稱毫秒級即時同步。
 
 1. 在 Supabase 建立專案。在 **SQL Editor → New query** 貼上並執行完整 [`supabase/migrations/202611130001_family_sync.sql`](supabase/migrations/202611130001_family_sync.sql)。此為首次安裝 migration，勿重複執行；先在空白專案安裝。公開 key 無法代替管理權限執行此步。
-2. 在 **Authentication → Email Templates → Magic Link** 將郵件內容設為含 `{{ .Token }}` 的驗證碼，例如 `你的印仔小星球登入驗證碼：{{ .Token }}`。App 使用電郵碼驗證，不使用跳轉 magic link。
-3. 設定可供兩位家長收信的自訂 SMTP。Supabase 內建郵件服務有收件人與頻率限制，不能以 API 成功當作真實投遞驗收。此專案尚未驗證真實電郵投遞。
+2. 在 **Authentication → Users → Add user → Create new user** 分別建立爸爸、媽媽帳戶，填寫各自電郵及不同的強密碼，勾選 **Auto Confirm User**（如介面文字不同，選擇直接建立並確認帳戶）。不要選 Send invitation；本方案不寄信。密碼只輸入 Supabase 管理介面，不放進原始碼或對話。
+3. 在 **Authentication → Sign In / Providers** 關閉 **Allow new users to sign up**，保留 Email 登入功能。只用管理端預先建立的帳戶；不要靠關閉所有使用者的 email confirmation 來開放匿名註冊。毋須 SMTP 或郵件模板。忘記密碼須由專案管理者透過 Supabase 管理端／受信任伺服器 Admin API 重設；Admin secret 不可放前端。
 4. 複製 `.env.example` 至 `.env.local`，填入 Project URL 及 publishable key。**不得填入 service_role、secret key 或資料庫密碼。** `.env.local` 不提交。重啟 dev server 或重新 build。
-5. 第一位家長按「爸爸媽媽家庭同步」，以電郵驗證碼登入，建立家庭及產生邀請碼。另一位家長以自己電郵登入，輸入邀請碼加入。邀請碼一次有效、24 小時到期，請只交給另一位家長。
+5. 第一位家長按「爸爸媽媽家庭同步」，以電郵及密碼登入，建立家庭及產生邀請碼。另一位家長以自己電郵登入，輸入邀請碼加入。邀請碼一次有效、24 小時到期，請只交給另一位家長。
 6. 若已有本機紀錄，先在本機設定匯出完整備份。建立家庭的家長可在**未有交易、原因及待同步加印的空白家庭**匯入一次；有資料家庭不支援覆蓋或合併。伺服器會驗證完整帳簿及版本，匯入不刪除本機原戶口。
 
 GitHub Pages workflow 使用 repository **Variables** `SUPABASE_URL` 及 `SUPABASE_PUBLISHABLE_KEY`。在 GitHub Settings → Secrets and variables → Actions → Variables 設定後，再手動執行 Pages workflow。公開瀏覽器 key 會存在 production JavaScript；資料授權由登入及伺服器 membership/RLS 控制。
@@ -123,4 +123,4 @@ GitHub Pages workflow 使用 repository **Variables** `SUPABASE_URL` 及 `SUPABA
 
 後端測試：`bash tests/cloud/run.sh`（Docker、Python 3；只建立並清理獨立測試容器）。它驗證真 PostgreSQL 權限及交易，Auth 為測試替身，不等於真 Supabase Auth/PostgREST 驗收。
 
-官方參考：[電郵 OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless)、[SMTP 及預設收件人限制](https://supabase.com/docs/guides/auth/auth-smtp)。目前 V2 狀態及尚未驗收項目以 [TEST_REPORT](docs/TEST_REPORT.md) 為準，連線成功不代表家庭同步已啟用。
+官方參考：[密碼登入](https://supabase.com/docs/guides/auth/passwords)、[管理端建立已確認帳戶](https://supabase.com/docs/reference/javascript/auth-admin-createuser)。目前 V2 狀態及尚未驗收項目以 [TEST_REPORT](docs/TEST_REPORT.md) 為準，連線成功不代表家庭同步已啟用。

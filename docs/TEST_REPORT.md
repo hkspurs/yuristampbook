@@ -87,12 +87,19 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 | `npm run test:e2e` | 已實測：31/31，根路徑；29 原有本機流程 + 2 模擬郵件 API 登入介面測試，沒有寄真實郵件 |
 | `bash tests/cloud/run.sh` | 已實測：12/12；真 PostgreSQL，Auth 使用 shim；完整 migration 於單一交易安裝 |
 | Supabase 專案連線 | 已實測：`/auth/v1/settings` HTTP 200，email enabled |
-| Supabase 帳簿安裝 | 受阻：`family_current` HTTP 404 / PGRST202；未有管理連接，公開 key 無法安裝 migration |
-| 真 Supabase Auth / PostgREST / 兩帳戶同步 | 未實測：須先安裝 SQL、設定電郵碼模板與 SMTP，再用兩個帳戶驗收 |
+| Supabase 帳簿安裝 | 使用者執行 SQL 成功；其後實測 `family_current` 已存在，匿名請求 HTTP 401 / permission denied（符合預期） |
+| 真 Supabase Auth / PostgREST / 兩帳戶同步 | 未實測：SQL 已安裝；須先由管理端建立兩個已確認的密碼帳戶，再用兩個帳戶驗收 |
 | 離線過期 session 冷啟動及切帳戶 UI 競態 | 已覆核並修正，但未完成專用瀏覽器驗收；資料層與固定 token 有單元測試 |
 | V2 子路徑 production | 未重跑；V1 已測，V2 保留相對資源路徑 |
 | iPhone 真機、郵件投遞、主畫面雙電話操作 | 未實測 |
 
 獨立 reviewer 指出並已修正：舊 snapshot 覆寫 metadata、已有原因仍允許匯入預覽、RPC 動態 token 身份競態、跨帳戶採納舊結果、離線 INITIAL_SESSION(null) 清除 cache identity。仍需真 Supabase 及兩部 iPhone 驗收，不能以本機測試替代。
 
-公開連線設定保存在忽略提交的 `.env.local`；repository 只包含佔位 `.env.example`。未上傳任何兒童紀錄、未寄實際電郵、未建立遠端 Supabase 資料表。
+公開連線設定保存在忽略提交的 `.env.local`；repository 只包含佔位 `.env.example`。未上傳任何兒童紀錄、未寄實際電郵、資料表其後由使用者在 Supabase SQL Editor 建立。
+
+
+### 密碼登入取代 OTP — 2026-11-13
+
+使用者確認沒有 SMTP，改用管理者預先建立的兩個已確認帳戶。App 使用 `signInWithPassword`，沒有公開註冊、寄驗證碼或電郵重設入口。密碼只在表單記憶體及 Supabase HTTPS 登入請求使用，成功、登出及切回本機時清空；不自行保存到 IndexedDB/localStorage。
+
+已實測 typecheck、lint、43/43 單元及 build 通過。瀏覽器全套初跑 30/31，唯一失敗為測試替身缺少 Supabase API version header 及其 CORS expose header，令 SDK 不讀取錯誤代碼；補正替身後重跑 cloud-ui 2/2 通過（錯誤密碼保留輸入、成功進入家庭設定、登出、無 OTP/signup 請求、沒有保存密碼）。29 項本機回歸在該全套執行已通過。沒有使用真實帳戶、沒有發信；真雙家長登入同步及 iPhone 驗收仍未完成。此版本未 push／部署。

@@ -33,7 +33,7 @@ sequence 唯一、不可變，歷史作依據，balance 為同步快取。EARN/D
 ## V2 家庭同步（使用者已確認，2026-11-13）
 爸爸媽媽各自登入，同一家庭／一個小朋友，歷史保存操作者。離線可查看與暫存 EARN；DEDUCT/SPEND/REVERSAL 必須雲端成功才入帳。待同步印仔不計入可用餘額。本機模式繼續可用，既有 IndexedDB 不自動搬移或刪除。
 
-採用 Supabase Auth（電郵一次性驗證碼）+ PostgreSQL；公開前端只使用 publishable key。家庭會員由安全 RPC 建立，單一登入只能屬於一個家庭。邀請碼高熵、限時、一次性。資料庫拒絕匿名／非家庭成員；伺服器鎖定家庭列、檢查 generation、operationId 與餘額，再原子追加 ledger，不能由前端直接更新餘額。設定／原因也由同一權限邊界寫入。
+採用 Supabase Auth（2026-11-13 使用者確認改用預先建立的兩個已確認帳戶＋電郵密碼登入，毋須 SMTP；不提供公開註冊或電郵密碼重設）+ PostgreSQL；公開前端只使用 publishable key。家庭會員由安全 RPC 建立，單一登入只能屬於一個家庭。邀請碼高熵、限時、一次性。資料庫拒絕匿名／非家庭成員；伺服器鎖定家庭列、檢查 generation、operationId 與餘額，再原子追加 ledger，不能由前端直接更新餘額。設定／原因也由同一權限邊界寫入。
 
 同步 cache 按專案、userId、familyId 隔離。離線 EARN 先保存固定 operationId 的 outbox，畫面列待同步；連線／回到前景與定時更新時重試。網絡回應遺失須重用同 ID，不合併不同意圖。離線不能首次登入。登入失效／退出不能讓另一個帳戶提交前一帳戶佇列。
 

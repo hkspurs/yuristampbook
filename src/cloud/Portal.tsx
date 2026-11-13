@@ -6,7 +6,15 @@ import { projectUrl, rpc, snapshot, supabase, transport } from "./client";
 const registry = `stamp-wallet-family:${projectUrl}`;
 const modeKey = "stamp-wallet-mode";
 function cachedIdentity(): string | undefined {
-  try { return (JSON.parse(localStorage.getItem(registry) || 'null') as {userId?:string}|null)?.userId; } catch { return undefined; }
+  try {
+    return (
+      JSON.parse(localStorage.getItem(registry) || "null") as {
+        userId?: string;
+      } | null
+    )?.userId;
+  } catch {
+    return undefined;
+  }
 }
 const message = (e: unknown) =>
   e instanceof Error ? e.message : "操作失敗，請重試";
@@ -43,11 +51,11 @@ export function Portal() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [label, setLabel] = useState("爸爸");
   const [token, setToken] = useState("");
   const changeMode = (value: string) => {
+    setPassword("");
     localStorage.setItem(modeKey, value);
     setMode(value);
     setError("");
@@ -75,13 +83,15 @@ export function Portal() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
       if (active) {
+        if (s || _event === "SIGNED_OUT") setPassword("");
         if (_event === "SIGNED_OUT") {
           localStorage.removeItem(registry);
           walletRef.current?.stop();
           walletRef.current = null;
           setWallet(null);
         }
-        identityRef.current = s?.user.id || (!navigator.onLine ? cachedIdentity() : undefined);
+        identityRef.current =
+          s?.user.id || (!navigator.onLine ? cachedIdentity() : undefined);
         setSession(s);
       }
     });
@@ -242,20 +252,18 @@ export function Portal() {
             e.preventDefault();
             void run(async () => {
               if (!supabase) return;
-              if (sent) {
-                const { error } = await supabase.auth.verifyOtp({
-                  email: email.trim(),
-                  token: code.trim(),
-                  type: "email",
-                });
-                if (error) throw error;
-              } else {
-                const { error } = await supabase.auth.signInWithOtp({
-                  email: email.trim(),
-                });
-                if (error) throw error;
-                setSent(true);
+              const { error } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password,
+              });
+              if (error) {
+                if (error.code === "invalid_credentials")
+                  throw new Error("電郵或密碼不正確，請重新輸入");
+                if (error.code === "email_not_confirmed")
+                  throw new Error("帳戶尚未確認，請聯絡建立帳戶的家長");
+                throw new Error("登入失敗，請檢查連線或稍後重試");
               }
+              setPassword("");
             });
           }}
         >
@@ -265,37 +273,27 @@ export function Portal() {
               type="email"
               required
               value={email}
-              disabled={sent || working}
+              disabled={working}
+              autoComplete="username"
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          {sent && (
-            <label>
-              電郵驗證碼
-              <input
-                required
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-              />
-            </label>
-          )}
-          <button disabled={working}>
-            {sent ? "驗證並登入" : "寄送登入驗證碼"}
-          </button>
-          {sent && (
-            <button
-              type="button"
+          <label>
+            密碼
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
               disabled={working}
-              onClick={() => {
-                setSent(false);
-                setCode("");
-              }}
-            >
-              重新寄送／修改電郵
-            </button>
-          )}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button disabled={working}>{working ? "登入中…" : "登入"}</button>
+          <p>
+            請使用家長預先建立的帳戶。忘記密碼時，請聯絡管理此家庭 Supabase
+            專案的家長重設；此版本不寄送重設電郵。
+          </p>
         </form>
       ) : !ready ? (
         <p role="status">正在讀取家庭…</p>
