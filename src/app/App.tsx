@@ -28,11 +28,13 @@ const useWallet = () => useContext(WalletContext);
 export function App({
   wallet = localService,
   controls,
+  syncStatus,
   onBusy,
   externalBusy = false,
 }: {
   wallet?: WalletPort;
   controls?: ReactNode;
+  syncStatus?: ReactNode;
   onBusy?: (busy: boolean) => void;
   externalBusy?: boolean;
 }) {
@@ -40,6 +42,7 @@ export function App({
     <WalletContext.Provider value={wallet}>
       <WalletScreen
         controls={controls}
+        syncStatus={syncStatus}
         onBusy={onBusy}
         externalBusy={externalBusy}
       />
@@ -182,10 +185,12 @@ function PwaNotice({ blocked }: { blocked: boolean }) {
 }
 function WalletScreen({
   controls,
+  syncStatus,
   onBusy,
   externalBusy,
 }: {
   controls?: ReactNode;
+  syncStatus?: ReactNode;
   onBusy?: (busy: boolean) => void;
   externalBusy: boolean;
 }) {
@@ -286,7 +291,7 @@ function WalletScreen({
       <div hidden={child}>
         <PwaNotice blocked={!!form || !!reverse || dirty || externalBusy} />
       </div>
-      <div hidden={child}>{controls}</div>
+      <div hidden={child || page !== "home"}>{syncStatus}</div>
       <main>
         {(page === "home" || child) && (
           <>
@@ -458,6 +463,7 @@ function WalletScreen({
             </section>
             <section hidden={child || page !== "settings"}>
               <h1>星球設定</h1>
+              {controls}
               <SettingsPanel
                 state={state}
                 onDirty={setDirty}

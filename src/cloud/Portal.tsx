@@ -210,6 +210,7 @@ export function Portal() {
         wallet={wallet}
         onBusy={setBusy}
         externalBusy={working}
+        syncStatus={<CloudSummary wallet={wallet} />}
         controls={
           <>
             <CloudControls wallet={wallet} busy={busy || working} />
@@ -504,4 +505,30 @@ function CloudControls({
       {(error || status.error) && <p role="alert">{error || status.error}</p>}
     </aside>
   );
+}
+
+function CloudSummary({ wallet }: { wallet: CloudWallet }) {
+  const [text, setText] = useState("家庭同步準備中…");
+  useEffect(() => {
+    let active = true;
+    const update = () => {
+      void wallet.db.outbox.count().then((count) => {
+        if (active)
+          setText(
+            `${navigator.onLine ? "已連線" : "離線"} · ${wallet.status.syncing ? "同步中…" : wallet.status.error ? "同步未完成，請到設定查看" : count ? `待同步加印 ${count} 個` : "每 15 秒自動同步"}`,
+          );
+      });
+    };
+    const unsubscribe = wallet.subscribe(update);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      active = false;
+      unsubscribe();
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, [wallet]);
+  return <p role="status">{text}</p>;
 }

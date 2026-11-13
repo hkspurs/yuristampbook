@@ -103,3 +103,7 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 使用者確認沒有 SMTP，改用管理者預先建立的兩個已確認帳戶。App 使用 `signInWithPassword`，沒有公開註冊、寄驗證碼或電郵重設入口。密碼只在表單記憶體及 Supabase HTTPS 登入請求使用，成功、登出及切回本機時清空；不自行保存到 IndexedDB/localStorage。
 
 已實測 typecheck、lint、43/43 單元及 build 通過。瀏覽器全套初跑 30/31，唯一失敗為測試替身缺少 Supabase API version header 及其 CORS expose header，令 SDK 不讀取錯誤代碼；補正替身後重跑 cloud-ui 2/2 通過（錯誤密碼保留輸入、成功進入家庭設定、登出、無 OTP/signup 請求、沒有保存密碼）。29 項本機回歸在該全套執行已通過。沒有使用真實帳戶、沒有發信；真雙家長登入同步及 iPhone 驗收仍未完成。此版本未 push／部署。
+
+### 同步控制移到設定 — 2026-11-13
+
+家庭同步入口、成員、邀請碼、立即同步、待同步項目及登出集中於設定頁；首頁只顯示同步摘要。設定區維持掛載，切頁不停止 15 秒同步 timer。typecheck、lint、43/43 unit、build、31/31 production E2E 通過，cloud-ui 驗證首頁不顯示同步入口、設定頁可進入登入。未重做真實雙電話驗收。

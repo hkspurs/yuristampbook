@@ -7,7 +7,10 @@ test("password rejection preserves input and local wallet without sending mail",
     requests.push(route.request().url());
     return route.fulfill({
       status: 400,
-      headers: { "x-supabase-api-version": "2024-01-01", "access-control-expose-headers": "X-Supabase-Api-Version" },
+      headers: {
+        "x-supabase-api-version": "2024-01-01",
+        "access-control-expose-headers": "X-Supabase-Api-Version",
+      },
       contentType: "application/json",
       body: JSON.stringify({
         code: "invalid_credentials",
@@ -16,6 +19,10 @@ test("password rejection preserves input and local wallet without sending mail",
     });
   });
   await page.goto("./");
+  await expect(
+    page.getByRole("button", { name: "爸爸媽媽家庭同步", exact: true }),
+  ).toBeHidden();
+  await page.getByRole("button", { name: "設定", exact: true }).click();
   await page
     .getByRole("button", { name: "爸爸媽媽家庭同步", exact: true })
     .click();
@@ -78,6 +85,10 @@ test("precreated password account reaches family setup and can sign out", async 
     else await route.abort();
   });
   await page.goto("./");
+  await expect(
+    page.getByRole("button", { name: "爸爸媽媽家庭同步", exact: true }),
+  ).toBeHidden();
+  await page.getByRole("button", { name: "設定", exact: true }).click();
   await page
     .getByRole("button", { name: "爸爸媽媽家庭同步", exact: true })
     .click();

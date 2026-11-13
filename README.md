@@ -114,7 +114,7 @@ git push -u origin main
 2. 在 **Authentication → Users → Add user → Create new user** 分別建立爸爸、媽媽帳戶，填寫各自電郵及不同的強密碼，勾選 **Auto Confirm User**（如介面文字不同，選擇直接建立並確認帳戶）。不要選 Send invitation；本方案不寄信。密碼只輸入 Supabase 管理介面，不放進原始碼或對話。
 3. 在 **Authentication → Sign In / Providers** 關閉 **Allow new users to sign up**，保留 Email 登入功能。只用管理端預先建立的帳戶；不要靠關閉所有使用者的 email confirmation 來開放匿名註冊。毋須 SMTP 或郵件模板。忘記密碼須由專案管理者透過 Supabase 管理端／受信任伺服器 Admin API 重設；Admin secret 不可放前端。
 4. 複製 `.env.example` 至 `.env.local`，填入 Project URL 及 publishable key。**不得填入 service_role、secret key 或資料庫密碼。** `.env.local` 不提交。重啟 dev server 或重新 build。
-5. 第一位家長按「爸爸媽媽家庭同步」，以電郵及密碼登入，建立家庭及產生邀請碼。另一位家長以自己電郵登入，輸入邀請碼加入。邀請碼一次有效、24 小時到期，請只交給另一位家長。
+5. 第一位家長在「設定」按「爸爸媽媽家庭同步」，以電郵及密碼登入，建立家庭及產生邀請碼。另一位家長以自己電郵登入，輸入邀請碼加入。邀請碼一次有效、24 小時到期，請只交給另一位家長。
 6. 若已有本機紀錄，先在本機設定匯出完整備份。建立家庭的家長可在**未有交易、原因及待同步加印的空白家庭**匯入一次；有資料家庭不支援覆蓋或合併。伺服器會驗證完整帳簿及版本，匯入不刪除本機原戶口。
 
 GitHub Pages workflow 使用 repository **Variables** `SUPABASE_URL` 及 `SUPABASE_PUBLISHABLE_KEY`。在 GitHub Settings → Secrets and variables → Actions → Variables 設定後，再手動執行 Pages workflow。公開瀏覽器 key 會存在 production JavaScript；資料授權由登入及伺服器 membership/RLS 控制。
