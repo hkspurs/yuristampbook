@@ -1,0 +1,10 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.local
+.env*
+*.pem
+*.key
+*backup*.json
+*.log
