@@ -8,6 +8,11 @@ export default defineConfig({
   use: { baseURL: `http://127.0.0.1:4173${base}`, trace: "retain-on-failure" },
   projects: [
     {
+      name: "cloud-ui",
+      testMatch: "cloud.spec.ts",
+      use: { browserName: "chromium", viewport: { width: 390, height: 844 } },
+    },
+    {
       name: "chromium-375",
       testMatch: "wallet.spec.ts",
       use: { browserName: "chromium", viewport: { width: 375, height: 812 } },

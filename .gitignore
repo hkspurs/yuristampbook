@@ -8,3 +8,4 @@ playwright-report/
 *.key
 *backup*.json
 *.log
+!.env.example

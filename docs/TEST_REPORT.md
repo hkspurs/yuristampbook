@@ -74,3 +74,25 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 發布前重新執行 typecheck、lint、33 項單元測試及 build，全通過；以實際 `TEST_BASE=/yuristampbook/ npm run test:e2e` 驗證 29/29 通過（16.7s）。程式繼續使用相對資源路徑。
 
 截至本次核對，repository `has_pages: false`，Pages API 為 404，Actions runs 為空；**尚未上線**。此環境只有 Git SSH 登入，沒有 GitHub API token／CLI 或可操作的登入網頁工作階段，因此不能啟用 Pages 或觸發 `workflow_dispatch`。已請使用者在 Settings → Pages 選 GitHub Actions，並在 Pages workflow 按 Run workflow（main）。待完成後核實 workflow 結果及正式 HTTPS PWA。前文「本輪不 push」屬初次本機交收範圍，本節為後續授權的最新狀態。
+
+## V2 家庭同步進度 — 2026-11-13
+
+本機分支 `feature/family-sync`。Node 26.13.0、PostgreSQL 17（獨立 Docker）、Chromium/WebKit。未部署此版本。
+
+| 項目 | 實測結果 |
+| --- | --- |
+| `npm run typecheck` / `npm run lint` | 已實測：通過 |
+| `npm run test:run` | 已實測：43/43；含離線 outbox、不重複入帳、帳戶/家庭隔離、過期 snapshot、固定 bearer 身份檢查 |
+| `npm run build` | 已實測：通過；主 JS 592 KB，gzip 約 174 KB，有 >500 KB chunk 提示 |
+| `npm run test:e2e` | 已實測：31/31，根路徑；29 原有本機流程 + 2 模擬郵件 API 登入介面測試，沒有寄真實郵件 |
+| `bash tests/cloud/run.sh` | 已實測：12/12；真 PostgreSQL，Auth 使用 shim；完整 migration 於單一交易安裝 |
+| Supabase 專案連線 | 已實測：`/auth/v1/settings` HTTP 200，email enabled |
+| Supabase 帳簿安裝 | 受阻：`family_current` HTTP 404 / PGRST202；未有管理連接，公開 key 無法安裝 migration |
+| 真 Supabase Auth / PostgREST / 兩帳戶同步 | 未實測：須先安裝 SQL、設定電郵碼模板與 SMTP，再用兩個帳戶驗收 |
+| 離線過期 session 冷啟動及切帳戶 UI 競態 | 已覆核並修正，但未完成專用瀏覽器驗收；資料層與固定 token 有單元測試 |
+| V2 子路徑 production | 未重跑；V1 已測，V2 保留相對資源路徑 |
+| iPhone 真機、郵件投遞、主畫面雙電話操作 | 未實測 |
+
+獨立 reviewer 指出並已修正：舊 snapshot 覆寫 metadata、已有原因仍允許匯入預覽、RPC 動態 token 身份競態、跨帳戶採納舊結果、離線 INITIAL_SESSION(null) 清除 cache identity。仍需真 Supabase 及兩部 iPhone 驗收，不能以本機測試替代。
+
+公開連線設定保存在忽略提交的 `.env.local`；repository 只包含佔位 `.env.example`。未上傳任何兒童紀錄、未寄實際電郵、未建立遠端 Supabase 資料表。

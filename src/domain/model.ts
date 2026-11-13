@@ -21,6 +21,8 @@ export interface Entry {
   balanceAfter: number;
   reversesEntryId?: string;
   intent: string;
+  actorId?: string;
+  actorName?: string;
 }
 export interface Reason {
   id: string;

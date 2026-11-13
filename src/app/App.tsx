@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { liveQuery } from "dexie";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { WalletDB, WalletService } from "../data/wallet";
@@ -14,7 +21,31 @@ import {
   type Intent,
   type Reason,
 } from "../domain/model";
-const service = new WalletService(new WalletDB());
+export const localService = new WalletService(new WalletDB());
+import type { WalletPort } from "../data/port";
+const WalletContext = createContext<WalletPort>(localService);
+const useWallet = () => useContext(WalletContext);
+export function App({
+  wallet = localService,
+  controls,
+  onBusy,
+  externalBusy = false,
+}: {
+  wallet?: WalletPort;
+  controls?: ReactNode;
+  onBusy?: (busy: boolean) => void;
+  externalBusy?: boolean;
+}) {
+  return (
+    <WalletContext.Provider value={wallet}>
+      <WalletScreen
+        controls={controls}
+        onBusy={onBusy}
+        externalBusy={externalBusy}
+      />
+    </WalletContext.Provider>
+  );
+}
 type State = Awaited<ReturnType<WalletService["load"]>>;
 const message = (e: unknown) =>
   e instanceof Error ? e.message : "未能儲存，請保留輸入並重試。";
@@ -135,7 +166,13 @@ function PwaNotice({ blocked }: { blocked: boolean }) {
           >
             立即更新
           </button>
-          <button className="quiet" onClick={() => { setRefresh(false); setReloadReady(false); }}>
+          <button
+            className="quiet"
+            onClick={() => {
+              setRefresh(false);
+              setReloadReady(false);
+            }}
+          >
             稍後處理
           </button>
         </aside>
@@ -143,7 +180,16 @@ function PwaNotice({ blocked }: { blocked: boolean }) {
     </>
   );
 }
-export function App() {
+function WalletScreen({
+  controls,
+  onBusy,
+  externalBusy,
+}: {
+  controls?: ReactNode;
+  onBusy?: (busy: boolean) => void;
+  externalBusy: boolean;
+}) {
+  const service = useWallet();
   const [state, setState] = useState<State>();
   const [error, setError] = useState("");
   const [page, setPage] = useState("home");
@@ -161,6 +207,9 @@ export function App() {
     entry: Entry;
     generation: string;
   } | null>(null);
+  useEffect(() => {
+    onBusy?.(!!form || !!reverse || dirty);
+  }, [onBusy, form, reverse, dirty]);
   useEffect(() => {
     let stopped = false;
     let subscription: { unsubscribe: () => void } | undefined;
@@ -181,7 +230,7 @@ export function App() {
       stopped = true;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [service]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -235,8 +284,9 @@ export function App() {
         </button>
       </header>
       <div hidden={child}>
-        <PwaNotice blocked={!!form || !!reverse || dirty} />
+        <PwaNotice blocked={!!form || !!reverse || dirty || externalBusy} />
       </div>
+      <div hidden={child}>{controls}</div>
       <main>
         {(page === "home" || child) && (
           <>
@@ -445,9 +495,13 @@ export function App() {
           initial={form}
           state={state}
           onClose={() => setForm(null)}
-          onDone={(kind) => {
-            if (kind === "EARN") setAnimation((n) => n + 1);
-            success("已儲存，印仔紀錄已更新。");
+          onDone={(kind, pending) => {
+            if (kind === "EARN" && !pending) setAnimation((n) => n + 1);
+            success(
+              pending
+                ? "加印已暫存，待同步後才加入可用餘額。"
+                : "已儲存，印仔紀錄已更新。",
+            );
           }}
         />
       )}
@@ -477,8 +531,9 @@ function TransactionForm({
   };
   state: State;
   onClose: () => void;
-  onDone: (kind: Category) => void;
+  onDone: (kind: Category, pending?: boolean) => void;
 }) {
+  const service = useWallet();
   const [amount, setAmount] = useState(initial.amount || "1");
   const [reason, setReason] = useState(initial.reason || "");
   const [time, setTime] = useState(hkInput());
@@ -529,8 +584,8 @@ function TransactionForm({
     setBusy(true);
     setError("");
     try {
-      await service.submit(frozen);
-      onDone(kind);
+      const result = await service.submit(frozen);
+      onDone(kind, "pending" in result);
     } catch (e) {
       setError(`未能儲存：${message(e)}。輸入已保留，可重試。`);
     } finally {
@@ -766,6 +821,7 @@ function History({
                 </div>
                 <div className="entry-body">
                   <strong>{e.reasonTextSnapshot}</strong>
+                  {e.actorName && <p>由{e.actorName}記錄</p>}
                   <p>
                     {e.kind === "REVERSAL" && original?.kind === "SPEND"
                       ? "消費退回"
@@ -821,6 +877,7 @@ function ReverseForm({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const service = useWallet();
   const [reason, setReason] = useState("家長誤操作更正");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -897,6 +954,8 @@ function SettingsPanel({
   onDirty: (v: boolean) => void;
   onDone: (s: string) => void;
 }) {
+  const service = useWallet();
+  const [revision, setRevision] = useState(state.meta.revision);
   const dirtySections = useRef({
     settings: false,
     reasons: false,
@@ -921,11 +980,16 @@ function SettingsPanel({
     setBusy(true);
     mark("settings", true);
     try {
-      await service.saveSettings(generation, {
-        nickname,
-        goalName,
-        goalAmount: positiveInteger(goalAmount),
-      });
+      await service.saveSettings(
+        generation,
+        {
+          nickname,
+          goalName,
+          goalAmount: positiveInteger(goalAmount),
+        },
+        revision,
+      );
+      setRevision((await service.load()).meta.revision);
       mark("settings", false);
       onDone("設定已儲存");
       setError("");
@@ -985,6 +1049,7 @@ function SettingsPanel({
                 setGoalName(state.settings.goalName);
                 setGoalAmount(String(state.settings.goalAmount));
                 setGeneration(state.meta.datasetGeneration);
+                setRevision(state.meta.revision);
                 mark("settings", false);
                 setError("");
               }}
@@ -1016,7 +1081,9 @@ function SettingsPanel({
         </p>
         <h3>你的資料留在這部裝置</h3>
         <p>
-          沒有雲端同步。換電話、清除網站資料或儲存空間不足，都可能失去紀錄。請定期匯出備份，改網址前也要先備份。
+          {service.mode === "cloud"
+            ? "雲端已確認紀錄由家庭共用；待同步加印仍只在這部裝置。請定期備份，未同步前不要清除網站資料。"
+            : "本機模式沒有雲端同步。換電話、清除網站資料或儲存空間不足，都可能失去紀錄。請定期匯出備份，改網址前也要先備份。"}
         </p>
         <p>小朋友展示模式只防誤觸，並非身分驗證。</p>
         <p className="hint">印仔小星球 v1.0.0 · 香港時間 · 本機戶口</p>
@@ -1031,6 +1098,8 @@ function ReasonManager({
   state: State;
   onDirty: (v: boolean) => void;
 }) {
+  const service = useWallet();
+  const [revision, setRevision] = useState(state.meta.revision);
   const [category, setCategory] = useState<Category>("EARN");
   const [search, setSearch] = useState("");
   const [text, setText] = useState("");
@@ -1090,10 +1159,15 @@ function ReasonManager({
           e.preventDefault();
           void run(() =>
             editing
-              ? service.changeReason(generation, editing.id, {
-                  text,
-                  archived: editing.archived,
-                })
+              ? service.changeReason(
+                  generation,
+                  editing.id,
+                  {
+                    text,
+                    archived: editing.archived,
+                  },
+                  revision,
+                )
               : service.addReason(generation, category, text),
           );
         }}
@@ -1104,7 +1178,10 @@ function ReasonManager({
             <input
               value={text}
               onChange={(e) => {
-                if (!text) setGeneration(state.meta.datasetGeneration);
+                if (!text) {
+                  setGeneration(state.meta.datasetGeneration);
+                  setRevision(state.meta.revision);
+                }
                 setText(e.target.value);
                 onDirty(!!e.target.value || !!editing);
               }}
@@ -1144,6 +1221,7 @@ function ReasonManager({
               disabled={busy || !!text}
               onClick={() => {
                 setEditing(r);
+                setRevision(state.meta.revision);
                 setText(r.text);
                 setGeneration(state.meta.datasetGeneration);
                 onDirty(true);
@@ -1196,6 +1274,8 @@ function BackupPanel({
   onDone: () => void;
   onDirty?: (v: boolean) => void;
 }) {
+  const service = useWallet();
+  const cloud = service.mode === "cloud";
   const [preview, setPreview] = useState<Awaited<
     ReturnType<WalletService["previewRestore"]>
   > | null>(null);
@@ -1244,7 +1324,12 @@ function BackupPanel({
   };
   return (
     <section className="settings-section">
-      <h2>備份與還原</h2>
+      <h2>{cloud ? "家庭備份與匯入" : "備份與還原"}</h2>
+      {cloud && (
+        <p>
+          匯出只包含雲端已確認紀錄，待同步加印請另行保存。只有家庭建立者可把完整本機備份匯入空家庭；已有紀錄不能覆蓋。
+        </p>
+      )}
       <p>定期保存完整 JSON 備份到「檔案」，換電話時便可還原。</p>
       <button disabled={busy} onClick={() => void exportNow()}>
         匯出目前資料
@@ -1285,7 +1370,9 @@ function BackupPanel({
             筆紀錄 · {preview.backup.wallet.balance} 個印仔
           </p>
           <p>
-            這會以備份取代目前所有資料，不會合併。請先按上方「匯出目前資料」保留現有紀錄。
+            {cloud
+              ? "這會把本機備份匯入空家庭，兩位家長都會看到。請先保留原始備份。"
+              : "這會以備份取代目前所有資料，不會合併。請先按上方「匯出目前資料」保留現有紀錄。"}
           </p>
           <label className="checkbox">
             <input
@@ -1293,10 +1380,12 @@ function BackupPanel({
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />
-            我已保留所需備份，確認取代目前資料
+            {cloud
+              ? "我已保留備份，確認匯入空家庭"
+              : "我已保留所需備份，確認取代目前資料"}
           </label>
           <button disabled={!confirmed || busy} onClick={() => void restore()}>
-            {busy ? "正在還原…" : "確認取代並還原"}
+            {busy ? "正在處理…" : cloud ? "確認匯入家庭" : "確認取代並還原"}
           </button>
           <button
             className="quiet"

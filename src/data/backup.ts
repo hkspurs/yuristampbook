@@ -142,6 +142,8 @@ export function validateBackup(value: unknown): Backup {
         clean(entry.note, 500, false) === entry.note,
       "交易文字未正規化",
     );
+    if (e.actorId !== undefined) entry.actorId = identifier(e.actorId);
+    if (e.actorName !== undefined) entry.actorName = string(e.actorName, 100);
     if (e.reversesEntryId !== undefined)
       entry.reversesEntryId = identifier(e.reversesEntryId);
     if (entry.kind === "REVERSAL")

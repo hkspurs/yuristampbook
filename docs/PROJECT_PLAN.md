@@ -29,3 +29,14 @@ sequence 唯一、不可變，歷史作依據，balance 為同步快取。EARN/D
 - npm audit 的非破壞性修正沒有可用變更；production dependencies 無警告，開發工具仍有 15 項 low/moderate 間接依賴警告。沒有使用 force 降版。
 - 交收驗證：33 項單元／資料測試、root 29 項及 `/stamp-wallet/` 29 項 production E2E 通過；typecheck、lint、build 通過。真機項目見 TEST_REPORT。
 - 本機 main：`2cf385e` 資料層與備份；`c1c53a3` 介面、PWA、相對資源、瀏覽器回歸與手動 Pages workflow。交收文件另行提交；無 remote、push 或部署。
+
+## V2 家庭同步（使用者已確認，2026-11-13）
+爸爸媽媽各自登入，同一家庭／一個小朋友，歷史保存操作者。離線可查看與暫存 EARN；DEDUCT/SPEND/REVERSAL 必須雲端成功才入帳。待同步印仔不計入可用餘額。本機模式繼續可用，既有 IndexedDB 不自動搬移或刪除。
+
+採用 Supabase Auth（電郵一次性驗證碼）+ PostgreSQL；公開前端只使用 publishable key。家庭會員由安全 RPC 建立，單一登入只能屬於一個家庭。邀請碼高熵、限時、一次性。資料庫拒絕匿名／非家庭成員；伺服器鎖定家庭列、檢查 generation、operationId 與餘額，再原子追加 ledger，不能由前端直接更新餘額。設定／原因也由同一權限邊界寫入。
+
+同步 cache 按專案、userId、familyId 隔離。離線 EARN 先保存固定 operationId 的 outbox，畫面列待同步；連線／回到前景與定時更新時重試。網絡回應遺失須重用同 ID，不合併不同意圖。離線不能首次登入。登入失效／退出不能讓另一個帳戶提交前一帳戶佇列。
+
+先提供空家庭一次性匯入本機完整備份，伺服器全量驗證並鎖定 revision，非空家庭拒絕覆蓋。同步模式匯出完整已確認帳目，待同步項目另外保留／匯出；不宣稱已備份未確認交易。本機還原維持原有功能。雲端取代全戶口非第一個同步版本範圍，避免抹去另一家長新紀錄。
+
+執行：1. SQL migration + auth/家庭隔離與競爭測試；2. 登入/邀請/加入及 adapter；3. outbox/cache/可見同步狀態與操作者；4. 雙帳戶、斷網重試、權限及本機回歸；5. 本機 commits 與實際連線待辦。雲端未連接時不偽稱已部署。新功能在 feature/family-sync，現有 main 保留。

@@ -105,3 +105,22 @@ git push -u origin main
 ## 官方配置依據
 
 2026-11-13 核對：[React/Vite](https://react.dev/learn/build-a-react-app-from-scratch)、[Vite Pages/base](https://vite.dev/guide/static-deploy)、[Dexie 原子 transaction](https://dexie.org/docs/Dexie/Dexie.transaction())、[PWA 更新提示](https://vite-pwa-org.netlify.app/guide/prompt-for-update)、[Apple 安裝](https://support.apple.com/guide/iphone/iphea86e5236/ios)、[WebKit 儲存政策](https://webkit.org/blog/14403/updates-to-storage-policy/)、[Safari 17.2 Web Apps](https://webkit.org/blog/14787/webkit-features-in-safari-17-2/)、[GitHub 手動 workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)、[Vitest](https://vitest.dev/guide/)、[Playwright browsers](https://playwright.dev/docs/browsers)、[Service Worker 安全環境與 scope](https://www.w3.org/TR/service-workers/)。實際套件版本見 lockfile。
+
+## 家庭同步 V2（需另外設定 Supabase）
+
+本機模式仍保留原 IndexedDB，沒有自動搬移或刪除。爸爸媽媽用不同電郵登入同一家庭；離線只可暫存加印，待伺服器確認才加入可用餘額。扣印、消費、更正、原因及設定修改需要連線。每 15 秒、返回 App 或恢復連線時刷新，不宣稱毫秒級即時同步。
+
+1. 在 Supabase 建立專案。在 **SQL Editor → New query** 貼上並執行完整 [`supabase/migrations/202611130001_family_sync.sql`](supabase/migrations/202611130001_family_sync.sql)。此為首次安裝 migration，勿重複執行；先在空白專案安裝。公開 key 無法代替管理權限執行此步。
+2. 在 **Authentication → Email Templates → Magic Link** 將郵件內容設為含 `{{ .Token }}` 的驗證碼，例如 `你的印仔小星球登入驗證碼：{{ .Token }}`。App 使用電郵碼驗證，不使用跳轉 magic link。
+3. 設定可供兩位家長收信的自訂 SMTP。Supabase 內建郵件服務有收件人與頻率限制，不能以 API 成功當作真實投遞驗收。此專案尚未驗證真實電郵投遞。
+4. 複製 `.env.example` 至 `.env.local`，填入 Project URL 及 publishable key。**不得填入 service_role、secret key 或資料庫密碼。** `.env.local` 不提交。重啟 dev server 或重新 build。
+5. 第一位家長按「爸爸媽媽家庭同步」，以電郵驗證碼登入，建立家庭及產生邀請碼。另一位家長以自己電郵登入，輸入邀請碼加入。邀請碼一次有效、24 小時到期，請只交給另一位家長。
+6. 若已有本機紀錄，先在本機設定匯出完整備份。建立家庭的家長可在**未有交易、原因及待同步加印的空白家庭**匯入一次；有資料家庭不支援覆蓋或合併。伺服器會驗證完整帳簿及版本，匯入不刪除本機原戶口。
+
+GitHub Pages workflow 使用 repository **Variables** `SUPABASE_URL` 及 `SUPABASE_PUBLISHABLE_KEY`。在 GitHub Settings → Secrets and variables → Actions → Variables 設定後，再手動執行 Pages workflow。公開瀏覽器 key 會存在 production JavaScript；資料授權由登入及伺服器 membership/RLS 控制。
+
+家庭備份包含已確認帳目；待同步加印另用「匯出待同步項目」保留，此檔不是完整還原備份。登出會保留該帳戶的待同步項目，其他帳戶不會代為提交。請在換機或清除網站資料前確認同步完成並匯出備份。離線冷啟動需要曾在該裝置登入並快取家庭；登入過期時可能需恢復網絡重新登入。
+
+後端測試：`bash tests/cloud/run.sh`（Docker、Python 3；只建立並清理獨立測試容器）。它驗證真 PostgreSQL 權限及交易，Auth 為測試替身，不等於真 Supabase Auth/PostgREST 驗收。
+
+官方參考：[電郵 OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless)、[SMTP 及預設收件人限制](https://supabase.com/docs/guides/auth/auth-smtp)。目前 V2 狀態及尚未驗收項目以 [TEST_REPORT](docs/TEST_REPORT.md) 為準，連線成功不代表家庭同步已啟用。
