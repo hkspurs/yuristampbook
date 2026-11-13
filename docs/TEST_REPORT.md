@@ -66,3 +66,11 @@ Linux、本機 Node 26.13.0／npm 11.20.0；React 19.3.1、Dexie 4.4.7、Vite 8.
 ## 本機版本紀錄
 
 功能版本：main 的 `c1c53a3`（先前資料層 commit `2cf385e`）。交收文件在後續 docs commit；`git log --oneline` 可核對。最終測試使用此功能樹，root 29/29（16.7s），子路徑 29/29（16.8s）；所有 E2E preview server 隨測試結束停止。未留下對外服務。
+
+## GitHub 發布進度（2026-11-13 後續授權）
+
+使用者指定 `https://github.com/hkspurs/yuristampbook` 並授權部署。已保留遠端初始 README commit `7d686b4`，以 merge commit `0735ad1` 整合本機版本並成功 push 到 main，沒有 force push。SSH 登入確認為 hkspurs。
+
+發布前重新執行 typecheck、lint、33 項單元測試及 build，全通過；以實際 `TEST_BASE=/yuristampbook/ npm run test:e2e` 驗證 29/29 通過（16.7s）。程式繼續使用相對資源路徑。
+
+截至本次核對，repository `has_pages: false`，Pages API 為 404，Actions runs 為空；**尚未上線**。此環境只有 Git SSH 登入，沒有 GitHub API token／CLI 或可操作的登入網頁工作階段，因此不能啟用 Pages 或觸發 `workflow_dispatch`。已請使用者在 Settings → Pages 選 GitHub Actions，並在 Pages workflow 按 Run workflow（main）。待完成後核實 workflow 結果及正式 HTTPS PWA。前文「本輪不 push」屬初次本機交收範圍，本節為後續授權的最新狀態。
